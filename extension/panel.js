@@ -14,12 +14,13 @@ let rich;
 const prefs = (() => { try { return JSON.parse(localStorage.getItem(scopedKey('preferences'))) || {}; } catch { return {}; } })();
 let sidebarOpen = prefs.sidebarOpen === true;
 let sidebarMode = prefs.sidebarMode === 'outline' ? 'outline' : 'files';
+let sidebarWidth = Number.isFinite(prefs.sidebarWidth) ? prefs.sidebarWidth : null;
 const narrowLayout = matchMedia('(max-width: 679px)');
 let fontSize = Math.max(12, Math.min(24, Number(prefs.fontSize) || 15));
 document.documentElement.dataset.theme = prefs.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 $('auto').checked = prefs.auto !== false;
 function savePrefs() {
-  try { localStorage.setItem(scopedKey('preferences'), JSON.stringify({ theme: document.documentElement.dataset.theme, fontSize, auto: $('auto').checked, sidebarOpen, sidebarMode })); }
+  try { localStorage.setItem(scopedKey('preferences'), JSON.stringify({ theme: document.documentElement.dataset.theme, fontSize, auto: $('auto').checked, sidebarOpen, sidebarMode, sidebarWidth })); }
   catch { /* Reading remains available when preference storage is full. */ }
 }
 function applySize() { $('content').style.setProperty('--reading-size', fontSize + 'px'); savePrefs(); }
@@ -33,8 +34,10 @@ function status(message, error = false) {
   }
 }
 function setSidebar(open, mode = sidebarMode, returnFocus = false) {
+  if (!open) finishSidebarResize();
   sidebarOpen = open; sidebarMode = mode;
   $('sidebar').hidden = !open;
+  $('sidebar-resizer').hidden = !open;
   $('backdrop').hidden = !open || !narrowLayout.matches;
   $('library').hidden = mode !== 'files'; $('toc').hidden = mode !== 'outline';
   $('sidebar-toggle').setAttribute('aria-expanded', String(open));
@@ -45,9 +48,65 @@ function setSidebar(open, mode = sidebarMode, returnFocus = false) {
   if (returnFocus) $('sidebar-toggle').focus();
   savePrefs();
 }
+const resizer = $('sidebar-resizer');
+let resizeDrag = null;
+function sidebarLimits() {
+  const available = $('workspace').clientWidth;
+  return { min:180, max:Math.max(180, available - (narrowLayout.matches ? 28 : 260)) };
+}
+function applySidebarWidth() {
+  const { min, max } = sidebarLimits();
+  const width = Math.round(Math.max(min, Math.min(max, sidebarWidth ?? (narrowLayout.matches ? 300 : 280))));
+  $('workspace').style.setProperty('--sidebar-width', `${width}px`);
+  resizer.setAttribute('aria-valuemin', String(min));
+  resizer.setAttribute('aria-valuemax', String(max));
+  resizer.setAttribute('aria-valuenow', String(width));
+  resizer.setAttribute('aria-valuetext', `目录宽度 ${width} 像素`);
+}
+function finishSidebarResize(cancel = false) {
+  if (!resizeDrag) return;
+  const drag = resizeDrag; resizeDrag = null;
+  if (cancel) sidebarWidth = drag.originalWidth;
+  if (resizer.hasPointerCapture(drag.pointerId)) resizer.releasePointerCapture(drag.pointerId);
+  document.body.classList.remove('resizing-sidebar');
+  applySidebarWidth(); savePrefs();
+}
+resizer.addEventListener('pointerdown', event => {
+  if (event.button !== 0 || !event.isPrimary || resizeDrag) return;
+  event.preventDefault();
+  resizer.focus({ preventScroll:true });
+  resizeDrag = { pointerId:event.pointerId, startX:event.clientX, startWidth:$('sidebar').getBoundingClientRect().width, originalWidth:sidebarWidth };
+  resizer.setPointerCapture(event.pointerId);
+  document.body.classList.add('resizing-sidebar');
+});
+resizer.addEventListener('pointermove', event => {
+  if (!resizeDrag || event.pointerId !== resizeDrag.pointerId) return;
+  const { min, max } = sidebarLimits();
+  sidebarWidth = Math.max(min, Math.min(max, resizeDrag.startWidth + event.clientX - resizeDrag.startX));
+  applySidebarWidth();
+});
+resizer.addEventListener('pointerup', event => { if (event.pointerId === resizeDrag?.pointerId) finishSidebarResize(); });
+resizer.addEventListener('pointercancel', () => finishSidebarResize(true));
+resizer.addEventListener('lostpointercapture', () => finishSidebarResize());
+window.addEventListener('blur', () => finishSidebarResize());
+resizer.addEventListener('dblclick', () => { sidebarWidth = null; applySidebarWidth(); savePrefs(); });
+resizer.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && resizeDrag) {
+    event.preventDefault(); event.stopPropagation(); finishSidebarResize(true); return;
+  }
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  const { min, max } = sidebarLimits();
+  const step = event.shiftKey ? 40 : 10;
+  const current = Number(resizer.getAttribute('aria-valuenow'));
+  sidebarWidth = event.key === 'Home' ? min : event.key === 'End' ? max : Math.max(min, Math.min(max, current + (event.key === 'ArrowLeft' ? -step : step)));
+  applySidebarWidth(); savePrefs();
+});
+new ResizeObserver(applySidebarWidth).observe($('workspace'));
+applySidebarWidth();
 function closeAfterSelection() { if (narrowLayout.matches) setSidebar(false, sidebarMode, true); }
 setSidebar(sidebarOpen);
-narrowLayout.addEventListener('change', () => setSidebar(sidebarOpen));
+narrowLayout.addEventListener('change', () => { finishSidebarResize(); applySidebarWidth(); setSidebar(sidebarOpen); });
 $('sidebar-toggle').addEventListener('click', () => setSidebar(!sidebarOpen));
 $('files-tab').addEventListener('click', () => setSidebar(true, 'files'));
 $('outline-tab').addEventListener('click', () => setSidebar(true, 'outline'));
