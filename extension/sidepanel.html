@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>页边 · Markdown</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="panel.js" type="module"></script>
+</head>
+<body>
+  <header class="reader-toolbar" aria-label="阅读工具">
+    <button id="sidebar-toggle" title="展开或收起文档目录" aria-label="文档目录" aria-expanded="false" aria-controls="sidebar">☰</button>
+    <strong id="current-title" title="页边 · 本地 Markdown">页边</strong>
+    <button id="save" title="保存到本地文件（Ctrl+S），正文可直接编辑" aria-label="保存文件">保存</button>
+    <div class="reading-controls"><button id="smaller" aria-label="缩小字号">A−</button><button id="larger" aria-label="放大字号">A+</button></div>
+    <button id="theme" title="切换明暗主题" aria-label="切换明暗主题">◐</button>
+  </header>
+  <div id="workspace">
+    <button id="backdrop" aria-label="收起目录" tabindex="-1" hidden></button>
+    <aside id="sidebar" aria-label="文档导航" hidden>
+      <div class="sidebar-heading"><strong>文档导航</strong><button id="sidebar-close" aria-label="收起目录" title="收起目录">‹</button></div>
+      <div class="actions">
+        <button id="folder" class="primary">打开文件夹</button>
+        <button id="files">文件</button>
+        <button id="refresh" title="重新扫描文件夹并刷新正文">刷新</button>
+        <input id="file-input" type="file" accept=".md,.markdown,.mdown,.mkd" multiple hidden>
+      </div>
+      <div class="workspace-hint">当前对话独立记忆 <button id="save-as" title="将当前内容另存为 Markdown 文件">另存为</button></div>
+      <div id="status" role="status" aria-live="polite">选择文件夹，把文档放在手边。</div>
+      <button id="restore" class="restore" hidden>继续读取上次的文件夹</button>
+      <div class="navigation-tabs"><button id="files-tab" aria-pressed="true" class="selected">文件目录</button><button id="outline-tab" aria-pressed="false">文章大纲</button></div>
+      <section id="library">
+        <div class="library-heading"><span id="folder-name">文件列表</span><span id="count">0 篇</span></div>
+        <div class="search-wrap"><input id="search" type="search" placeholder="搜索文件名或路径…" aria-label="搜索文件名或路径"></div>
+        <nav id="file-list" aria-label="Markdown 文件列表"><p class="muted">支持 .md / .markdown 文件及子文件夹</p></nav>
+      </section>
+      <nav id="toc" aria-label="文章目录" hidden></nav>
+    </aside>
+  <main id="reader">
+    <div id="welcome"><span class="eyebrow">READ ALONGSIDE</span><h1>网页在左，<br>笔记在手边。</h1><p>选择本地 Markdown 文件夹，<br>一边浏览，一边翻阅自己的文档。</p><button id="welcome-open" class="primary">选择文档</button><div class="welcome-card"><b>左侧目录，随时展开</b><p>选好文章后收起目录，<br>把空间留给正文。</p></div><small>也可以拖入 Markdown 文件</small></div>
+    <div id="document" hidden>
+      <section id="conflict" hidden aria-label="文件版本选择">
+        <strong>本地文件与编辑稿都有更新</strong>
+        <p>两份内容已保留，请选择本次要保存的版本。</p>
+        <details><summary>查看磁盘上的最新版本</summary><pre id="external-version"></pre></details>
+        <div><button id="use-external">采用磁盘版本</button><button id="use-local">保存我的编辑稿</button><button id="conflict-copy">编辑稿另存为</button></div>
+      </section>
+      <article id="content" title="点击正文直接编辑 · Ctrl+S 保存 · Ctrl+点击打开链接"></article>
+    </div>
+  </main>
+  </div>
+  <div id="notice" role="status" aria-live="polite" hidden></div>
+  <footer><span id="reading-info">本地文档</span><button id="save-state" title="点击立即保存" hidden>已同步</button><label><input id="auto" type="checkbox" checked> 实时同步</label></footer>
+</body>
+</html>
